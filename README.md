@@ -1,124 +1,99 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# AI Swarm backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS API with PostgreSQL persistence, SearXNG search activities, Temporal orchestration and an isolated Playwright/Chromium browser worker.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The API creates project-scoped jobs. An orchestration worker routes activities to separate search and browser queues. Search discovers and ranks candidates; browser activities capture source text and optional screenshots. Stagehand adapters are present but are not enabled until the compatibility gate passes. Captured evidence is source material, not a fact-checked report.
 
-## Description
+## Folder responsibilities
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Folder                      | Responsibility                                                      |
+| --------------------------- | ------------------------------------------------------------------- |
+| src/config                  | Validated settings for each process role                            |
+| src/common, src/security    | Typed errors, project authorization and audit infrastructure        |
+| src/persistence             | Parameterized PostgreSQL repositories and versioned SQL migrations  |
+| src/search                  | SearXNG client, normalization, API and persisted execution          |
+| src/browser                 | Action contracts, policies, session lifecycle, targets and adapters |
+| src/artifacts               | Scoped artifact metadata and local storage                          |
+| src/temporal, src/workflows | Dispatch recovery and deterministic workflows                       |
+| src/workers/searxng         | Search activity worker                                              |
+| src/workers/browser         | Browser activity worker                                             |
+| src/workers/orchestration   | Workflow worker                                                     |
+| src/research                | Search-to-browser research job API                                  |
+| infrastructure              | API/worker images and supporting configuration                      |
+| tests, test                 | Unit, SQL, browser fixture and HTTP tests                           |
 
-## Project setup
+SQL migrations with pg are the implemented persistence choice. No ORM is required.
 
-```bash
-$ npm install
+## Setup
+
+Use Node.js 24 and Docker with Compose. Copy .env.example to .env only for a fresh checkout; preserve existing credentials.
+
+Configure POSTGRES_PASSWORD, SEARXNG_SECRET, DATABASE_URL for host access and DOCKER_DATABASE_URL for the postgres service hostname. AUTH_CREDENTIALS is a JSON array of server-owned principals with token, tenantId, userId, projectIds and capabilities. Tokens must be unique and at least 32 characters; placeholder tokens are rejected. Use capabilities search, browser and research as appropriate. Keep .env out of Git.
+
+BROWSER_ALLOWED_DOMAINS is an explicit comma-separated list of exact hostnames. The default example.com permits only that host. Add the domains your jobs need.
+
+```sh
+npm ci
+npm run build
+docker compose --profile engine up --build -d
 ```
 
-## Compile and run the project
+The engine profile starts PostgreSQL, SearXNG, a persistent Temporal development server, migration, API and three workers. The API is at localhost:3000, SearXNG at localhost:8080 and Temporal UI at localhost:8233. Published ports bind to loopback. Migration completes before API and activity workers start.
 
-```bash
-# development
-$ npm run start
+For host-based development, start PostgreSQL, SearXNG and Temporal, then run migration and the processes in separate terminals:
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```sh
+npm run db:migrate
+npm run start:prod
+npm run worker:orchestration
+npm run worker:search
+npm run worker:browser
 ```
 
-## Run tests
+Install a matching local Chromium with npx playwright install chromium before running the browser worker outside Docker. Host DATABASE_URL, TEMPORAL_ADDRESS and SEARXNG_URL must point to host-accessible ports.
 
-```bash
-# unit tests
-$ npm run test
+The browser-smoke Compose profile retains the earlier standalone browser runtime. It is separate from the engine worker.
 
-# e2e tests
-$ npm run test:e2e
+## API
 
-# test coverage
-$ npm run test:cov
+Send Authorization: Bearer <configured-token>. Project access and capabilities come from the configured principal. Creation also requires an Idempotency-Key header; reusing a key with different input returns 409.
+
+| Method and path                                      | Body or behavior                                               |
+| ---------------------------------------------------- | -------------------------------------------------------------- |
+| POST /projects/:projectId/search-runs                | queries array, optional language, safeSearch and maxCandidates |
+| GET /projects/:projectId/search-runs/:runId          | Status and output                                              |
+| GET /projects/:projectId/search-runs/:runId/results  | Paginated normalized results                                   |
+| POST /projects/:projectId/search-runs/:runId/cancel  | Persist cancellation and request Temporal cancellation         |
+| POST /projects/:projectId/browser-runs               | urls array and optional screenshot boolean                     |
+| GET /projects/:projectId/browser-runs/:runId         | Status and output                                              |
+| POST /projects/:projectId/browser-runs/:runId/cancel | Cancel browser run                                             |
+| POST /projects/:projectId/research-runs              | goal string and search object                                  |
+| GET /projects/:projectId/research-runs/:runId        | Discovery and capture outcome                                  |
+| GET /projects/:projectId/artifacts/:artifactId       | Project-scoped artifact download                               |
+| GET /health/live                                     | API liveness                                                   |
+| GET /health/ready                                    | PostgreSQL, Temporal and SearXNG readiness                     |
+
+Example search body: {"queries":["example topic"],"safeSearch":1,"maxCandidates":5}.
+Example browser body: {"urls":["https://example.com"],"screenshot":true}.
+Research currently performs deterministic discovery and capture. The stored goal does not drive an LLM loop.
+
+Runs use QUEUED, RUNNING, COMPLETED, PARTIAL, NO_RESULTS, FAILED and CANCELLED. Pending dispatch is retried; activity writes are idempotent and terminal states cannot regress.
+
+## Browser controls
+
+Internal tools support open, observe, click, type, scroll, extract, screenshot, tabs, back and bounded waits. Each run owns an ephemeral context and egress proxy. Exact domain and public-IP policies, redirect checks, page references, action/tab/time budgets and per-session serialization apply. Form submission and risky actions are denied. Raw JavaScript execution, arbitrary upload and download are not exposed. No public CDP endpoint is published.
+
+## Validation
+
+```sh
+npm run build
+npx tsc --noEmit --incremental false
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
+npx oxlint src/ test/ tests/ scripts/
+npm run browser:compatibility
 ```
 
-## Deployment
+The local test suite uses PGlite for PostgreSQL semantics and real headless Playwright fixture interactions. It does not replace live Compose integration testing. The configured type-aware lint command currently fails to spawn its native helper on this Windows host; TypeScript checking and ordinary lint run separately.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/overview) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+See documentation/IMPLEMENTATION_STATUS.md for verified work and outstanding gates. Temporal start-dev and floating infrastructure image tags are development configuration; production deployment remains a separate phase.
