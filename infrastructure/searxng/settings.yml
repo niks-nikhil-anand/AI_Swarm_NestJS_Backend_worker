@@ -1,0 +1,2 @@
+# Reference scaffold. Active configuration: docker/searxng/settings.yml.
+use_default_settings: true
