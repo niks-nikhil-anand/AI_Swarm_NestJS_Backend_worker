@@ -10,6 +10,7 @@ import { PersistenceModule } from './persistence/persistence.module';
 import { TemporalModule } from './temporal/temporal.module';
 import { SearchModule } from './search/search.module';
 import { HealthModule } from './health/health.module';
+import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     ConfigurationModule.forRole('api'),
@@ -21,6 +22,7 @@ import { HealthModule } from './health/health.module';
     BrowserApiModule,
     ArtifactApiModule,
     ResearchModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

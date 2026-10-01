@@ -1,4 +1,4 @@
-export type Capability = 'search' | 'browser' | 'research';
+export type Capability = 'search' | 'browser' | 'research' | 'users';
 export interface ExecutionContext {
   tenantId: string;
   userId: string;

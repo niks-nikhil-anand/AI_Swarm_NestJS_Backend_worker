@@ -4,6 +4,8 @@ COPY package*.json ./
 RUN npm ci
 COPY tsconfig*.json nest-cli.json ./
 COPY src ./src
+COPY prisma ./prisma
+COPY prisma7.config.ts ./
 RUN npm run build
 
 FROM node:24-bookworm-slim AS runtime

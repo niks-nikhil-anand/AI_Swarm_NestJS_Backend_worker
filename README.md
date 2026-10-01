@@ -22,7 +22,7 @@ The API creates project-scoped jobs. An orchestration worker routes activities t
 | infrastructure              | API/worker images and supporting configuration                      |
 | tests, test                 | Unit, SQL, browser fixture and HTTP tests                           |
 
-SQL migrations with pg are the implemented persistence choice. No ORM is required.
+Research/search/browser persistence uses SQL migrations with pg. User and OAuth account persistence uses Prisma 7. See [User API](documentation/USER_API.md) for CRUD routes, authorization and setup.
 
 ## Setup
 
