@@ -1,0 +1,46 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountProvider {
+  google
+  github
+}
+
+model User {
+  id        String    @id(map: "users_pkey") @default(uuid()) @db.Text
+  email     String    @unique(map: "users_email_key") @db.Text
+  name      String?   @db.Text
+  avatar    String?   @db.Text
+  password  String?   @map("password_hash") @db.Text
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  accounts  Account[]
+
+  @@map("users")
+}
+
+model Account {
+  id           String          @id(map: "accounts_pkey") @default(uuid()) @db.Text
+  userId       String          @map("user_id") @db.Text
+  provider     AccountProvider
+  providerId   String          @map("provider_id") @db.Text
+  accessToken  String?         @map("access_token") @db.Text
+  refreshToken String?         @map("refresh_token") @db.Text
+  expiresAt    DateTime?       @map("expires_at") @db.Timestamptz(6)
+  tokenType    String?         @map("token_type") @db.Text
+  scope        String?         @db.Text
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "accounts_user_id_fkey")
+
+  @@unique([provider, providerId], map: "accounts_provider_provider_id_key")
+  @@index([userId], map: "accounts_user_id_idx")
+  @@map("accounts")
+}
