@@ -31,13 +31,19 @@
     "browser:compatibility": "tsx scripts/browser-compatibility.ts",
     "prisma:format": "prisma format --config prisma7.config.ts",
     "db:migrate:status": "prisma migrate status --config prisma7.config.ts",
-    "db:migrate:legacy": "tsx src/persistence/migrate.ts"
+    "db:migrate:legacy": "tsx src/persistence/migrate.ts",
+    "test:auth": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand test/auth.e2e-spec.ts",
+    "test:user-api": "node test/run-user-api-tests.mjs",
+    "test:user-api:unit": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.user-api.config.ts --runInBand",
+    "test:user-api:watch": "npm run test:user-api:unit -- --watch",
+    "test:user-api:cov": "node test/run-user-api-tests.mjs --coverage"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "4.1.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/swagger": "12.0.2",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "@temporalio/activity": "1.24.0",
