@@ -1,0 +1,28 @@
+Generated with built-in image_gen.
+
+Create ONE high-resolution landscape architecture infographic poster for the project's documentation. Use case: infographic-diagram. Title: "AI SWARM — FEATURES & FULL FLOW". Subtitle: "From research goal to evidence-backed intelligence". Crisp readable typography, white/very pale slate background, dark navy text, teal for existing implementation, purple for planned capabilities, amber for validation gates. Professional technical architecture poster, elegant rounded panels, minimal icons, precise visible directional arrows, generous spacing, no decorative robots. Large canvas 3:2 or wide landscape. Fit all content legibly. Status legend: "Teal: Implemented foundation" "Purple: Planned" "Amber: Validation required". Existing code has not been production validated.
+
+Main flow across the upper/middle area, numbered and connected with arrows:
+1 "USER & FRONTEND": "Research goal • Search queries • Source URLs*" (footnote: "*URLs currently supported by standalone browser runs")
+2 teal "NESTJS CONTROL API": "Bearer auth • Project permissions • Capabilities" / "Idempotency • Run creation • Status"
+3 teal "TEMPORAL ORCHESTRATION": "Durable dispatch • Checkpoints • Retries" / "swarm-orchestration"
+4 purple "PLANNER & SUPERVISOR": "Task graph • Completion criteria • Budget allocation"
+5 teal "SEARCH WORKER": "swarm-search → SearXNG" / "Normalize • Deduplicate • Rank candidates"
+6 teal "BROWSER WORKER": "swarm-browser → Controlled tools → Playwright → Chromium" / "Policy checks • Fresh targets • Isolated sessions" / "Capture text • Extract DOM • Screenshots"
+Under browser, amber small inset "Stagehand semantic extraction: compatibility gate".
+7 teal "EVIDENCE STORE": "Source URLs • Excerpts • Timestamps • Capture references"
+8 purple "SPECIALIST SWARM": three clearly connected subcards "Analyst: claims & comparisons", "Verifier: support & contradictions", "Writer: cited synthesis". Evidence connects to all roles, then writer connects to final.
+9 purple "FINAL REPORT": "Verified claims • Citations • Limitations" / "Partial outcomes • Cost & progress"
+
+Use two rows with an unambiguous snake/return connector if needed; every numbered stage must appear exactly once in order. Planner is planned, current deterministic route skips it: add a thin teal bypass from Temporal to Search labeled "Current path: deterministic discovery + capture". Main planned flow goes through planner.
+
+Below main pipeline, a prominent purple agent-loop ribbon: "BOUNDED AGENT LOOP (PLANNED)" and "Observe → Decide → Validate → Execute → Re-observe → Verify → Stop / Replan", with a small return arrow. Note "All browser actions pass through policy and tool validation".
+
+Bottom foundation panels:
+A teal "DATA & IDENTITY": "PostgreSQL: runs, search, actions, evidence, approvals" / "Prisma: User + Account; pg: research domain" / "Global user admin CRUD; OAuth login planned"
+B teal/purple split "ARTIFACTS & STORAGE": "Current: local files, checksums, scoped download" / "Planned: S3, retention, upload/download policies"
+C teal/purple split "SECURITY & CONTROL": "Current: domain/public-IP checks, action budgets, audit" / "Planned: external identity, tenant containers, scoped approvals"
+D amber/purple "OPERATIONS & QUALITY": "Validate: live stack, Linux sandbox, restart recovery" / "Planned: worker readiness, research cancellation, telemetry, cost quotas, backups, evals"
+
+Small footer: "Next: validate live stack → close deployment gaps → bounded agent → verified reports → specialist swarm → production". Another concise caveat: "Approval records exist; execution flow is not enabled. Captured text is not yet a fact-checked report."
+Do not claim current LLM execution or current multi-agent coordination. Distinguish implemented components from future ambitions with colored headers and explicit labels. This is an information-rich system map, not a marketing illustration.

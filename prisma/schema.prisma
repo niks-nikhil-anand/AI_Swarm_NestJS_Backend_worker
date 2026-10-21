@@ -44,3 +44,118 @@ model Account {
   @@index([userId], map: "accounts_user_id_idx")
   @@map("accounts")
 }
+
+// Run-domain parity: preserve the existing SQL tables and API behavior.
+// Kind/status CHECK constraints are retained in migration SQL.
+model Run {
+  id             String          @id @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Text
+  projectId      String          @map("project_id") @db.Text
+  userId         String          @map("user_id") @db.Text
+  kind           String          @db.Text
+  status         String          @default("QUEUED") @db.Text
+  input          Json            @db.JsonB
+  inputHash      String          @map("input_hash") @db.Text
+  output         Json?           @db.JsonB
+  idempotencyKey String          @map("idempotency_key") @db.Text
+  dispatchState  String          @default("PENDING") @map("dispatch_state") @db.Text
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  searchQueries  SearchQuery[]
+  searchResults  SearchResult[]
+  browserActions BrowserAction[]
+  artifacts      Artifact[]
+  evidence       Evidence[]
+  approvals      Approval[]
+
+  @@unique([tenantId, projectId, kind, idempotencyKey], map: "runs_tenant_id_project_id_kind_idempotency_key_key")
+  @@index([tenantId, projectId, createdAt], map: "runs_project_idx")
+  @@map("runs")
+}
+
+model SearchQuery {
+  runId        String         @map("run_id") @db.Uuid
+  queryIndex   Int            @map("query_index")
+  query        String         @db.Text
+  status       String         @db.Text
+  warningCodes Json           @default("[]") @map("warning_codes") @db.JsonB
+  run          Run            @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "search_queries_run_id_fkey")
+  results      SearchResult[]
+
+  @@id([runId, queryIndex])
+  @@map("search_queries")
+}
+
+model SearchResult {
+  id           String      @id @db.Uuid
+  runId        String      @map("run_id") @db.Uuid
+  queryIndex   Int         @map("query_index")
+  canonicalUrl String      @map("canonical_url") @db.Text
+  data         Json        @db.JsonB
+  run          Run         @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "search_results_run_id_fkey")
+  query        SearchQuery @relation(fields: [runId, queryIndex], references: [runId, queryIndex], onDelete: NoAction, onUpdate: NoAction, map: "search_results_run_id_query_index_fkey")
+  evidence     Evidence[]
+
+  @@unique([runId, queryIndex, canonicalUrl], map: "search_results_run_id_query_index_canonical_url_key")
+  @@map("search_results")
+}
+
+model BrowserAction {
+  id        String   @id @db.Uuid
+  runId     String   @map("run_id") @db.Uuid
+  sequence  Int
+  kind      String   @db.Text
+  status    String   @db.Text
+  data      Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  run       Run      @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "browser_actions_run_id_fkey")
+
+  @@unique([runId, sequence], map: "browser_actions_run_id_sequence_key")
+  @@map("browser_actions")
+}
+
+model Artifact {
+  id        String   @id @db.Uuid
+  runId     String   @map("run_id") @db.Uuid
+  objectKey String   @unique(map: "artifacts_object_key_key") @map("object_key") @db.Text
+  mimeType  String   @map("mime_type") @db.Text
+  size      BigInt
+  checksum  String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  run       Run      @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artifacts_run_id_fkey")
+
+  @@map("artifacts")
+}
+
+model Evidence {
+  id             String        @id @db.Uuid
+  runId          String        @map("run_id") @db.Uuid
+  sourceResultId String?       @map("source_result_id") @db.Uuid
+  url            String        @db.Text
+  data           Json          @db.JsonB
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  run            Run           @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "evidence_run_id_fkey")
+  sourceResult   SearchResult? @relation(fields: [sourceResultId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "evidence_source_result_id_fkey")
+
+  @@unique([runId, url], map: "evidence_run_id_url_key")
+  @@map("evidence")
+}
+
+model Approval {
+  id         String   @id @db.Uuid
+  runId      String   @map("run_id") @db.Uuid
+  payloadHash String  @map("payload_hash") @db.Text
+  status     String   @default("PENDING") @db.Text
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  decisionBy String?  @map("decision_by") @db.Text
+  run        Run      @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "approvals_run_id_fkey")
+
+  @@map("approvals")
+}
+
+model LegacySchemaMigration {
+  version   String   @id @db.Text
+  appliedAt DateTime @default(now()) @map("applied_at") @db.Timestamptz(6)
+
+  @@map("schema_migrations")
+}

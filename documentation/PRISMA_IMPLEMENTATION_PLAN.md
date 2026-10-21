@@ -1,5 +1,7 @@
 # Prisma adoption and database schema plan
 
+> Historical plan. Use the [current PostgreSQL, Prisma and schema plan](POSTGRES_PRISMA_SCHEMA_PLAN.md) for adoption from the existing User/Account Prisma history. Its append-only run-domain baseline strategy supersedes the `0_init` onboarding proposal below; preserve existing committed migrations.
+
 Status: proposed implementation plan. Prepared 1 October 2026 from the current repository. No Prisma packages, application code or database changes have been applied.
 
 Adopt Prisma for typed PostgreSQL access and migration management while preserving existing tables, stored data, API responses and Temporal activity behavior. Deliver schema parity first, migrate database callers second, and add new research entities only as their features are implemented.

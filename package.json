@@ -21,14 +21,17 @@
     "test:debug": "node --inspect-brk --experimental-vm-modules -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "test:users": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand test/users.e2e-spec.ts",
-    "db:migrate": "tsx src/persistence/migrate.ts",
+    "db:migrate": "npm run db:migrate:prisma",
     "prisma:validate": "prisma validate --config prisma7.config.ts",
     "prisma:generate": "prisma generate --config prisma7.config.ts",
     "db:migrate:prisma": "prisma migrate deploy --config prisma7.config.ts",
     "worker:search": "node dist/workers/searxng/main.js",
     "worker:orchestration": "node dist/workers/orchestration/main.js",
     "worker:browser": "node dist/workers/browser/main.js",
-    "browser:compatibility": "tsx scripts/browser-compatibility.ts"
+    "browser:compatibility": "tsx scripts/browser-compatibility.ts",
+    "prisma:format": "prisma format --config prisma7.config.ts",
+    "db:migrate:status": "prisma migrate status --config prisma7.config.ts",
+    "db:migrate:legacy": "tsx src/persistence/migrate.ts"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "4.1.0",

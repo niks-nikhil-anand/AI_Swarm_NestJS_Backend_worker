@@ -1,5 +1,7 @@
 # AI Swarm backend
 
+See the [documentation review and overall AI swarm plan](documentation/README.md) for the target architecture, analysis of every design document, implementation phases and acceptance gates.
+
 NestJS API with PostgreSQL persistence, SearXNG search activities, Temporal orchestration and an isolated Playwright/Chromium browser worker.
 
 The API creates project-scoped jobs. An orchestration worker routes activities to separate search and browser queues. Search discovers and ranks candidates; browser activities capture source text and optional screenshots. Stagehand adapters are present but are not enabled until the compatibility gate passes. Captured evidence is source material, not a fact-checked report.
@@ -22,7 +24,7 @@ The API creates project-scoped jobs. An orchestration worker routes activities t
 | infrastructure              | API/worker images and supporting configuration                      |
 | tests, test                 | Unit, SQL, browser fixture and HTTP tests                           |
 
-Research/search/browser persistence uses SQL migrations with pg. User and OAuth account persistence uses Prisma 7. See [User API](documentation/USER_API.md) for CRUD routes, authorization and setup.
+Prisma 7 models the existing research/search/browser schema and User/Account records. Prisma migrations now own fresh Compose database setup; research execution still uses pg repositories. See [database setup and existing-database onboarding](documentation/DATABASE_SETUP.md). See [User API](documentation/USER_API.md) for CRUD routes, authorization and setup.
 
 ## Setup
 
@@ -38,12 +40,12 @@ npm run build
 docker compose --profile engine up --build -d
 ```
 
-The engine profile starts PostgreSQL, SearXNG, a persistent Temporal development server, migration, API and three workers. The API is at localhost:3000, SearXNG at localhost:8080 and Temporal UI at localhost:8233. Published ports bind to loopback. Migration completes before API and activity workers start.
+The engine profile starts PostgreSQL, SearXNG, a persistent Temporal development server, migration, API and three workers. The API is at localhost:3000, SearXNG at localhost:8080 and Temporal UI at localhost:8233. Published ports bind to loopback. Prisma migration completes before the API and all workers start. Existing databases require the reviewed onboarding in the database setup guide before this migration job runs.
 
 For host-based development, start PostgreSQL, SearXNG and Temporal, then run migration and the processes in separate terminals:
 
 ```sh
-npm run db:migrate
+npm run db:migrate:prisma
 npm run start:prod
 npm run worker:orchestration
 npm run worker:search
@@ -94,6 +96,6 @@ npx oxlint src/ test/ tests/ scripts/
 npm run browser:compatibility
 ```
 
-The local test suite uses PGlite for PostgreSQL semantics and real headless Playwright fixture interactions. It does not replace live Compose integration testing. The configured type-aware lint command currently fails to spawn its native helper on this Windows host; TypeScript checking and ordinary lint run separately.
+The local test suite uses PGlite for PostgreSQL semantics and real headless Playwright fixture interactions. It does not replace live Compose integration testing. The implementation status records a prior native-helper failure for type-aware lint; reproduce validation on the current host. TypeScript checking and ordinary lint can run separately.
 
 See documentation/IMPLEMENTATION_STATUS.md for verified work and outstanding gates. Temporal start-dev and floating infrastructure image tags are development configuration; production deployment remains a separate phase.

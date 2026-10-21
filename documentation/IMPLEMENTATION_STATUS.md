@@ -21,6 +21,10 @@ This records the implementation delivered against SERVICE_IMPLEMENTATION_PLAN.md
 | Docker                     | API, migration, Temporal and three workers wired into engine profile              | Build/start checks with Docker                                  |
 | Tests                      | SQL semantics, auth API, browser fixtures, policy and artifact tests              | Two explicit Stagehand compatibility TODOs and live stack tests |
 
+## Database integration update — 22 October 2026
+
+Prisma now models the existing run-domain tables as well as User/Account. An append-only run-domain baseline and dedicated migration Docker target are wired into Compose; all workers depend on migration completion. Research services still use pg repositories. Populated databases require reviewed onboarding in [DATABASE_SETUP.md](DATABASE_SETUP.md); do not run the new baseline blindly against legacy tables. Current validation results are recorded in the task completion note below the database setup guide.
+
 ## Verified locally
 
 Nest build, full TypeScript checking, ordinary oxlint, Jest unit tests and HTTP end-to-end tests pass. Temporal workflow bundling is checked separately. Browser tests exercise real headless Chromium with local fixtures. Production dependency audit reported no vulnerabilities at the time of implementation.
