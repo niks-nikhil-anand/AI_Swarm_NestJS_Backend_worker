@@ -14,14 +14,18 @@ enum AccountProvider {
 }
 
 model User {
-  id        String    @id(map: "users_pkey") @default(uuid()) @db.Text
-  email     String    @unique(map: "users_email_key") @db.Text
-  name      String?   @db.Text
-  avatar    String?   @db.Text
-  password  String?   @map("password_hash") @db.Text
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  accounts  Account[]
+  id                String        @id(map: "users_pkey") @default(uuid()) @db.Text
+  email             String        @unique(map: "users_email_key") @db.Text
+  name              String?       @db.Text
+  avatar            String?       @db.Text
+  password          String?       @map("password_hash") @db.Text
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  accounts          Account[]
+  credentialVersion Int           @default(0) @map("credential_version")
+  deletedAt         DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  disabledAt        DateTime?     @map("disabled_at") @db.Timestamptz(6)
+  sessions          AuthSession[]
 
   @@map("users")
 }
@@ -142,13 +146,13 @@ model Evidence {
 }
 
 model Approval {
-  id         String   @id @db.Uuid
-  runId      String   @map("run_id") @db.Uuid
-  payloadHash String  @map("payload_hash") @db.Text
-  status     String   @default("PENDING") @db.Text
-  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
-  decisionBy String?  @map("decision_by") @db.Text
-  run        Run      @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "approvals_run_id_fkey")
+  id          String   @id @db.Uuid
+  runId       String   @map("run_id") @db.Uuid
+  payloadHash String   @map("payload_hash") @db.Text
+  status      String   @default("PENDING") @db.Text
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
+  decisionBy  String?  @map("decision_by") @db.Text
+  run         Run      @relation(fields: [runId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "approvals_run_id_fkey")
 
   @@map("approvals")
 }
@@ -158,4 +162,19 @@ model LegacySchemaMigration {
   appliedAt DateTime @default(now()) @map("applied_at") @db.Timestamptz(6)
 
   @@map("schema_migrations")
+}
+
+model AuthSession {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Text
+  tokenHash         String    @unique @map("token_hash") @db.Text
+  credentialVersion Int       @map("credential_version")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz(6)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
 }
