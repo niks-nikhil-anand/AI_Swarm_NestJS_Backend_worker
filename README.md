@@ -56,6 +56,8 @@ Install a matching local Chromium with npx playwright install chromium before ru
 
 The browser-smoke Compose profile retains the earlier standalone browser runtime. It is separate from the engine worker.
 
+See [Authentication API](documentation/AUTH_API.md) for registration, login/logout, current-user GET/PUT/DELETE and session configuration.
+
 ## API
 
 Send Authorization: Bearer <configured-token>. Project access and capabilities come from the configured principal. Creation also requires an Idempotency-Key header; reusing a key with different input returns 409.

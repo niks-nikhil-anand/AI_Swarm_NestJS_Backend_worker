@@ -48,3 +48,13 @@ Approval records exist in the schema but no approval execution flow is enabled. 
 3. Pass the full Chromium/Stagehand shared-session compatibility matrix with model credentials and extension support.
 4. Add semantic observation/extraction and the bounded browser agent only after that gate passes.
 5. Implement approval handling, artifact retention, S3 and worker observability before production rollout.
+
+## Authentication update — 22 October 2026
+
+Implemented `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/logout-all` and GET/PUT/DELETE `/auth/me`, Prisma AuthSession and user credential-state fields. Existing admin email/password updates revoke sessions. Local PostgreSQL application schema was backed up under `.data/backups/pre-auth-20261022.dump`, reconciled with the committed pre-auth migrations, baselined and upgraded with the additive auth migration; repeated deployment passed. No application tables or rows were dropped.
+
+Build, schema/client generation, TypeScript, ordinary lint, 21 HTTP tests against isolated PostgreSQL schemas and 23 unit/browser tests passed. Two prior Stagehand TODOs remain. See [Auth API](AUTH_API.md). Project membership, OAuth/reset/verification/MFA and shared production throttling remain separate work.
+
+## Focused user/auth Jest expansion — 22 October 2026
+
+The user/auth-only test plan is implemented: 155 tests in 9 suites pass (130 real HTTP/PostgreSQL cases and 25 unit/runner cases), with no skips/TODOs. Scoped coverage is 98.72% lines and 88.51% branches, meeting the measured gates. Added explicit database preflight, isolated fixtures, validation/boundary cases, session/credential races, rollback injection, CORS/cache/logging controls and administrative user regression. Unrelated backend suites are excluded. See [execution results](USER_AUTH_JEST_RESULTS.md) and run `npm run test:user-api:cov` to reproduce.

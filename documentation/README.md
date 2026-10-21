@@ -10,6 +10,14 @@ See the [PostgreSQL, Prisma and schema implementation plan](POSTGRES_PRISMA_SCHE
 
 For implemented database wiring and safe onboarding, see [database setup](DATABASE_SETUP.md).
 
+See the [authentication API plan](AUTH_API_IMPLEMENTATION_PLAN.md) for register, login, logout, PUT profile and DELETE account endpoints, session schema and implementation phases.
+
+The [implemented Authentication API](AUTH_API.md) now provides register, login/logout and current-user GET/PUT/DELETE with database-backed sessions. Project membership integration remains pending.
+
+See the [focused user/auth Jest test plan](USER_AUTH_JEST_TEST_PLAN.md) for endpoint test cases, current coverage, missing cases and phase-wise delivery.
+
+The user/auth Jest plan is implemented. See [focused test execution and coverage results](USER_AUTH_JEST_RESULTS.md).
+
 ## Product objective
 
 Build an AI research swarm that turns a user goal into a bounded plan, discovers relevant sources, captures evidence through controlled browser tools, delegates focused reasoning tasks, checks claims, and produces a cited report. Users should be able to inspect progress, costs, failures, evidence and approval requests, and cancel work reliably.
