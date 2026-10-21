@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '../persistence/prisma.module';
+import { CredentialsModule } from './credentials.module';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { PasswordService } from './password.service';
 import { UserAccessGuard } from './user-access.guard';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [CredentialsModule],
   controllers: [UsersController],
-  providers: [UsersService, PasswordService, UserAccessGuard],
+  providers: [UsersService, UserAccessGuard],
 })
 export class UsersModule {}

@@ -1,3 +1,4 @@
+import { UserLockService } from './user-lock.service';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../persistence/prisma.service';
@@ -24,6 +25,7 @@ export class UsersService {
   constructor(
     private readonly db: PrismaService,
     private readonly passwords: PasswordService,
+    private readonly locks: UserLockService,
   ) {}
 
   async create(input: CreateUserInput) {
@@ -68,10 +70,28 @@ export class UsersService {
     if (input.password !== undefined)
       data.password = await this.passwords.hash(input.password);
     try {
-      return await this.db.user.update({
-        where: { id },
-        data,
-        select: publicUser,
+      return await this.db.$transaction(async (tx) => {
+        await this.locks.lock(tx, id);
+        const current = await tx.user.findUnique({ where: { id } });
+        if (!current)
+          throw new ServiceError('USER_NOT_FOUND', 'User not found', 404);
+        const sensitive =
+          input.password !== undefined ||
+          (input.email !== undefined && input.email !== current.email);
+        const user = await tx.user.update({
+          where: { id },
+          data: {
+            ...data,
+            ...(sensitive ? { credentialVersion: { increment: 1 } } : {}),
+          },
+          select: publicUser,
+        });
+        if (sensitive)
+          await tx.authSession.updateMany({
+            where: { userId: id, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+        return user;
       });
     } catch (error) {
       return this.databaseError(error);
