@@ -58,6 +58,8 @@ The browser-smoke Compose profile retains the earlier standalone browser runtime
 
 See [Authentication API](documentation/AUTH_API.md) for registration, login/logout, current-user GET/PUT/DELETE and session configuration.
 
+Swagger UI: [http://localhost:3000/docs](http://localhost:3000/docs). Register or log in, then paste the returned `accessToken` into **Authorize → user-session**. See the [Swagger walkthrough](documentation/AUTH_API.md) for self-service versus administrative APIs.
+
 ## API
 
 Send Authorization: Bearer <configured-token>. Project access and capabilities come from the configured principal. Creation also requires an Idempotency-Key header; reusing a key with different input returns 409.

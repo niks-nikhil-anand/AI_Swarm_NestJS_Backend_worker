@@ -58,3 +58,9 @@ Build, schema/client generation, TypeScript, ordinary lint, 21 HTTP tests agains
 ## Focused user/auth Jest expansion — 22 October 2026
 
 The user/auth-only test plan is implemented: 155 tests in 9 suites pass (130 real HTTP/PostgreSQL cases and 25 unit/runner cases), with no skips/TODOs. Scoped coverage is 98.72% lines and 88.51% branches, meeting the measured gates. Added explicit database preflight, isolated fixtures, validation/boundary cases, session/credential races, rollback injection, CORS/cache/logging controls and administrative user regression. Unrelated backend suites are excluded. See [execution results](USER_AUTH_JEST_RESULTS.md) and run `npm run test:user-api:cov` to reproduce.
+
+## Swagger user/auth explorer — 22 October 2026
+
+Installed the pinned NestJS 12-compatible `@nestjs/swagger` 12.0.2 package. `/docs` serves interactive documentation for the seven auth/self-service and five admin-user operations; `/docs-json` serves the spec. Zod-derived requests, public response schemas, examples, errors, pagination and separate user-session/admin-token schemes are documented. Authorization is not persisted in browser storage. The API is running locally for manual testing.
+
+Seven Swagger tests and the existing focused regressions pass: 162 tests in 10 suites, no skips/TODOs, 98.75% line and 88.51% branch coverage. Build, TypeScript and scoped lint pass. See the [Swagger walkthrough](AUTH_API.md).

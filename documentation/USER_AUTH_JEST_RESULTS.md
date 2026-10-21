@@ -4,9 +4,9 @@ Verified: 22 October 2026. Scope: the implemented user/authentication APIs only.
 
 ## Result
 
-- 155 tests across 9 suites pass, with zero skipped tests and zero TODOs.
-- 130 HTTP/PostgreSQL cases and 25 focused unit/runner cases.
-- Starting baseline: 20 passing tests. Added coverage: 135 additional executable cases.
+- 162 tests across 10 suites pass, with zero skipped tests and zero TODOs.
+- 137 HTTP/PostgreSQL cases and 25 focused unit/runner cases.
+- Starting baseline: 20 passing tests. Added coverage: 142 additional executable cases (including seven Swagger-specific cases).
 - Build, full TypeScript checking and scoped ordinary lint pass.
 - Search, browser, research, Temporal and swarm suites were not selected or run for this task.
 
@@ -16,10 +16,10 @@ Environment: Node.js v26.8.1 and PostgreSQL 17.11. Tests use explicit `AUTH_API_
 
 | Measure | Measured | Required minimum |
 | --- | --- | --- |
-| Statements | 98.24% | 95% |
+| Statements | 98.27% | 95% |
 | Branches | 88.51% | 85% |
 | Functions | 98.55% | 95% |
-| Lines | 98.72% | 95% |
+| Lines | 98.75% | 95% |
 
 Coverage is collected from auth/user runtime files and auth configuration. Module/contract declaration files and unrelated backend modules are excluded. All user runtime files have 100% statement/line coverage; remaining aggregate gaps include defensive auth-service/configuration and optional/decorator-generated branches. Critical case checklists are enforced through tests rather than a claim of 100% branch coverage.
 
@@ -33,6 +33,7 @@ Generated artifacts: `coverage/user-api/lcov-report/index.html`, `coverage/user-
 | [auth-registration.e2e-spec.ts](../test/auth-registration.e2e-spec.ts) | Register/login boundaries, normalization, salts/secrets, session issuance and hashing capacity |
 | [auth-profile.e2e-spec.ts](../test/auth-profile.e2e-spec.ts) | GET/PUT/DELETE identity isolation, credential changes, logical deletion, races and rollback |
 | [auth-sessions.e2e-spec.ts](../test/auth-sessions.e2e-spec.ts) | Logout/all, invalid/expired sessions, cache/CORS, administrative regressions and unavailable PostgreSQL |
+| [auth-swagger.e2e-spec.ts](../test/auth-swagger.e2e-spec.ts) | Swagger UI assets, OpenAPI security/schema contracts, examples and end-to-end documented auth flow |
 | [users.e2e-spec.ts](../test/users.e2e-spec.ts) | Existing administrative user CRUD, validation, pagination and account cleanup |
 | [password.spec.ts](../tests/auth/password.spec.ts) | Password format, hostile parameters, independent salts and bounded work |
 | [auth-request.guard.spec.ts](../tests/auth/auth-request.guard.spec.ts) | Independent account/IP limits, bucket expiry/capacity, origins and headers |

@@ -2,6 +2,22 @@
 
 Implemented with Prisma/PostgreSQL sessions and salted scrypt password verification. The auth migration is `20261022000100_add_auth_sessions`. See [database setup](DATABASE_SETUP.md) before deploying migrations to an existing database; never reset populated tables.
 
+## Swagger UI — test the APIs in your browser
+
+Open [Swagger UI](http://localhost:3000/docs). The machine-readable document is [OpenAPI JSON](http://localhost:3000/docs-json). The API has been started locally; if you restart later, run `npm run start:dev` (or build and use `npm run start:prod`). PostgreSQL must be running for account operations.
+
+1. Expand **Authentication → POST /auth/register**, edit the example to use a fresh email/password, and execute it. Or use **POST /auth/login** for an existing account.
+2. Copy `accessToken` from the actual response. Click **Authorize**, paste it into **user-session** without typing `Bearer`, authorize, and close the dialog.
+3. Execute **GET /auth/me** to get your user, **PUT /auth/me** to change your profile, and **POST /auth/logout** to revoke the current session. Expand an operation and use **Try it out** if the editor is not already active.
+4. Log in and authorize again after logout. To deactivate the account, execute **DELETE /auth/me** with its `currentPassword`.
+5. PUT includes profile, email-change and password-change examples. Email/password changes invalidate all current tokens; log in with the new credentials and authorize again afterward.
+
+The **Users (admin)** tag is separate: `/users` CRUD requires **admin-token**, supplied by a configured `AUTH_CREDENTIALS` principal with `users` capability. A login token cannot manage arbitrary users. For your own user, use `/auth/me`.
+
+Swagger includes request limits, required/nullable fields, response schemas, empty 204 responses, error statuses, pagination and both bearer schemes. Tokens are not persisted across reloads, and actual credentials are never embedded in the generated spec. Request schemas are derived from the existing Zod validators; additional conditional update rules are described in the operation.
+
+Implementation reference: [official NestJS Swagger documentation](https://docs.nestjs.com/openapi/introduction).
+
 ## Routes
 
 | Method | Path | Input | Success |
@@ -106,3 +122,7 @@ npm test -- --runInBand
 ```
 
 Verified 22 October 2026: schema validation, client generation, build, TypeScript, ordinary lint, 21 HTTP integration tests and 23 unit/browser tests passed. Two pre-existing Stagehand tests remain TODO. Local application schema onboarding was backed up, reconciled and baselined without dropping data; the auth migration and repeated migration deployment passed. This does not establish live research/Temporal or Stagehand readiness.
+
+## Swagger verification — 22 October 2026
+
+Swagger-specific tests verify UI assets, the exact 12 documented operations, separate bearer requirements, resolved schema references, request examples, error/204 responses and the documented PostgreSQL-backed auth flow. The complete focused run passes 162 tests in 10 suites with no skips/TODOs (98.75% line coverage; 88.51% branch coverage). Build, TypeScript and scoped lint pass. See [execution results](USER_AUTH_JEST_RESULTS.md).
