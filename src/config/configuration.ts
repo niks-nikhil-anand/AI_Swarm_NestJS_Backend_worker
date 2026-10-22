@@ -1,7 +1,8 @@
 import { Injectable, DynamicModule, Global, Module } from '@nestjs/common';
 import { config as loadEnv } from 'dotenv';
 import { z } from 'zod';
-import { browserConfiguration } from './browser.config';
+import { browserConfiguration, ConfigurationError } from './browser.config';
+import { approvalConfiguration } from './approval.config';
 import { searxngConfiguration } from './searxng.config';
 import { securityConfiguration } from './security.config';
 
@@ -33,6 +34,7 @@ export function loadConfiguration(
       port: integer(env.PORT, 3000, 65535),
       search: searxngConfiguration(env),
       browser: role === 'browser' ? browserConfiguration(env) : undefined,
+      approvals: approvalConfiguration(env),
       principals: role === 'api' ? securityConfiguration(env) : [],
       temporal: {
         address: env.TEMPORAL_ADDRESS || 'localhost:7233',
@@ -44,7 +46,9 @@ export function loadConfiguration(
       },
       artifactRoot: env.ARTIFACT_ROOT || '.data/artifacts',
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof ConfigurationError)
+      throw new Error('Invalid configuration: ' + error.message);
     throw new Error(
       'Invalid configuration: check DATABASE_URL, AUTH_CREDENTIALS and process-specific limits (values redacted)',
     );

@@ -7,7 +7,7 @@ export const PrincipalSchema = z
     userId: z.string().min(1).max(100),
     projectIds: z.array(z.string().min(1).max(100)).min(1).max(100),
     capabilities: z
-      .array(z.enum(['search', 'browser', 'research', 'users']))
+      .array(z.enum(['search', 'browser', 'research', 'users', 'approve']))
       .min(1),
   })
   .strict();
