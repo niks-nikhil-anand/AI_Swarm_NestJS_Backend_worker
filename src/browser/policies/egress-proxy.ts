@@ -6,6 +6,10 @@ import { NetworkPolicyService } from './network-policy.service';
 // Connects to the validated IP, rather than resolving the hostname again.
 export async function createEgressProxy(policy: NetworkPolicyService) {
   const sockets = new Set<Socket>();
+  // The session's own CDP port, tunnelled for the Stagehand extension only. Plain HTTP to
+  // it (the /json discovery endpoints) stays denied; Chromium additionally rejects any
+  // WebSocket whose Origin is not the extension.
+  let debuggerPort: number | undefined;
   const server = createServer(async (req, res) => {
     try {
       if (!['GET', 'HEAD'].includes(req.method || '')) {
@@ -61,14 +65,23 @@ export async function createEgressProxy(policy: NetworkPolicyService) {
     socket.on('close', () => sockets.delete(socket));
   });
   server.on('connect', (req, client, head) => {
+    // Chromium can drop its side at any time (e.g. exiting with the CDP tunnel open).
+    // Unhandled, the resulting EPIPE/ECONNRESET would crash the worker process; the
+    // close handler below then tears down the upstream side.
+    client.on('error', () => client.destroy());
     void (async () => {
       try {
         const url = new URL('https://' + req.url);
-        if (url.port && url.port !== '443') throw new Error('Port denied');
-        const target = await policy.resolve(url.toString());
+        const local =
+          debuggerPort !== undefined && req.url === '127.0.0.1:' + debuggerPort;
+        if (!local && url.port && url.port !== '443')
+          throw new Error('Port denied');
+        const target = local
+          ? { address: '127.0.0.1', family: 4 }
+          : await policy.resolve(url.toString());
         const upstream = connect({
           host: target.address,
-          port: 443,
+          port: local ? debuggerPort! : 443,
           family: target.family,
         });
         sockets.add(upstream);
@@ -93,6 +106,11 @@ export async function createEgressProxy(policy: NetworkPolicyService) {
     throw new Error('Proxy bind failed');
   return {
     url: 'http://127.0.0.1:' + address.port,
+    allowDebuggerTunnel: (port: number) => {
+      if (!Number.isInteger(port) || port < 1 || port > 65535)
+        throw new Error('Invalid debugger port');
+      debuggerPort = port;
+    },
     close: async () => {
       for (const socket of sockets) socket.destroy();
       await new Promise<void>((resolve) => server.close(() => resolve()));

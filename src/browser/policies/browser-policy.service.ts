@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { BrowserSession } from '../contracts/browser-session';
 import type { ExecutionContext } from '../../common/types/execution-context';
 import { PolicyError } from '../../common/errors/policy.errors';
+import { BrowserError } from '../../common/errors/browser.errors';
 import { CapabilityPolicyService } from './capability-policy.service';
 import { ResourcePolicyService } from './resource-policy.service';
 @Injectable()
@@ -17,6 +18,12 @@ export class BrowserPolicyService {
       session.owner.projectId !== ctx.projectId
     )
       throw new PolicyError('SESSION_DENIED', 'Session ownership mismatch');
+    if (session.connection.closed)
+      throw new BrowserError(
+        'SESSION_DISCONNECTED',
+        'Session browser is no longer running',
+        409,
+      );
     this.capability.assert(ctx);
     this.resources.assert(session);
   }
