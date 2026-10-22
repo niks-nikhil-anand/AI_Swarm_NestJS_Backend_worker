@@ -18,6 +18,10 @@ async function main() {
       taskQueue: settings.temporal.browserQueue,
       activities: browserActivities(app.get(BrowserExecutionService)),
       maxConcurrentActivityTaskExecutions: settings.browser!.concurrency,
+      // On SIGTERM the worker stops polling and lets in-flight tasks finish for 20 s, within
+      // Compose's 30 s stop_grace_period; tasks still running are then cancelled as a worker
+      // shutdown, which ends the attempt without cancelling the run (see activity-bindings).
+      shutdownGraceTime: '20 seconds',
     });
     await worker.run();
   } finally {

@@ -1,5 +1,11 @@
-import { proxyActivities } from '@temporalio/workflow';
-import type { WorkflowJob } from '../temporal/task-queues';
+import {
+  ActivityCancellationType,
+  proxyActivities,
+} from '@temporalio/workflow';
+import {
+  BROWSER_MAX_ATTEMPTS,
+  type WorkflowJob,
+} from '../temporal/task-queues';
 type Discovery = {
   status: string;
   candidates: { id: string; url: string }[];
@@ -39,7 +45,14 @@ export async function researchWorkflow(
     taskQueue: job.browserQueue,
     startToCloseTimeout: '10 minutes',
     heartbeatTimeout: '20 seconds',
-    retry: { maximumAttempts: 1 },
+    // Cancellation completes only after the activity closed its browser and released
+    // the run lease.
+    cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+    retry: {
+      maximumAttempts: BROWSER_MAX_ATTEMPTS,
+      initialInterval: '5 seconds',
+      backoffCoefficient: 2,
+    },
   });
   return browser.executeBrowserTask({
     ...job,
