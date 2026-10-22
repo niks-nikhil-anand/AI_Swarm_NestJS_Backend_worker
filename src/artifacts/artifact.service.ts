@@ -12,23 +12,64 @@ export class ArtifactService {
     private readonly storage: LocalStorage,
     private readonly db: DatabaseService,
   ) {}
-  async save(run: Run, data: Buffer, mimeType = 'image/png') {
+  // With an idempotency key, a replayed step gets its existing artifact back.
+  async save(
+    run: Run,
+    data: Buffer,
+    mimeType = 'image/png',
+    idempotencyKey?: string,
+  ) {
     if (data.length > 10000000)
       throw new ServiceError(
         'ARTIFACT_TOO_LARGE',
         'Artifact size limit exceeded',
       );
+    const existing = async () =>
+      idempotencyKey
+        ? (
+            await this.db.query<{
+              id: string;
+              mime_type: string;
+              size: string;
+              checksum: string;
+            }>(
+              'SELECT id,mime_type,size,checksum FROM artifacts WHERE run_id=$1 AND idempotency_key=$2',
+              [run.id, idempotencyKey],
+            )
+          ).map((row) => ({
+            id: row.id,
+            mimeType: row.mime_type,
+            size: Number(row.size),
+            checksum: row.checksum,
+          }))[0]
+        : undefined;
+    const stored = await existing();
+    if (stored) return stored;
     const id = randomUUID(),
       checksum = createHash('sha256').update(data).digest('hex');
     await this.storage.put(id, data);
+    let inserted: unknown[];
     try {
-      await this.db.query(
-        'INSERT INTO artifacts(id,run_id,object_key,mime_type,size,checksum) VALUES($1,$2,$3,$4,$5,$6)',
-        [id, run.id, id, mimeType, data.length, checksum],
+      inserted = await this.db.query(
+        'INSERT INTO artifacts(id,run_id,object_key,mime_type,size,checksum,idempotency_key) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (run_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id',
+        [
+          id,
+          run.id,
+          id,
+          mimeType,
+          data.length,
+          checksum,
+          idempotencyKey ?? null,
+        ],
       );
     } catch (error) {
       await this.storage.remove(id);
       throw error;
+    }
+    if (!inserted.length) {
+      // A concurrent attempt stored the same artifact first.
+      await this.storage.remove(id);
+      return (await existing())!;
     }
     return { id, mimeType, size: data.length, checksum };
   }
