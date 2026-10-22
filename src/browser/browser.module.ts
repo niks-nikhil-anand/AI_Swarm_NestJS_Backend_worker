@@ -11,6 +11,12 @@ import { TabManagerService } from './services/tab-manager.service';
 import { BrowserService } from './services/browser.service';
 import { TargetRegistryService } from './targets/target-registry.service';
 import { PlaywrightAdapter } from './adapters/playwright/playwright.adapter';
+import { StagehandConnector } from './adapters/stagehand/stagehand.connector';
+import {
+  MODEL_PROVIDER,
+  createModelProvider,
+} from './adapters/stagehand/model-provider';
+import { ConfigurationService } from '../config/configuration';
 @Module({
   providers: [
     SessionCleanupJob,
@@ -25,6 +31,13 @@ import { PlaywrightAdapter } from './adapters/playwright/playwright.adapter';
     BrowserService,
     TargetRegistryService,
     PlaywrightAdapter,
+    StagehandConnector,
+    {
+      provide: MODEL_PROVIDER,
+      inject: [ConfigurationService],
+      useFactory: (config: ConfigurationService) =>
+        createModelProvider(config.value.browser?.stagehand.model),
+    },
   ],
   exports: [BrowserService, SessionManagerService],
 })
