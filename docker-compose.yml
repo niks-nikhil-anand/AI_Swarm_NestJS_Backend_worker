@@ -123,6 +123,7 @@ services:
       PORT: '3000'
       DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
       AUTH_CREDENTIALS: ${AUTH_CREDENTIALS:?Set AUTH_CREDENTIALS in .env}
+      APPROVAL_REQUIRE_DISTINCT_APPROVER: ${APPROVAL_REQUIRE_DISTINCT_APPROVER:-true}
       SEARXNG_URL: http://searxng:8080
       TEMPORAL_ADDRESS: temporal:7233
       ARTIFACT_ROOT: /app/.data/artifacts
@@ -199,6 +200,13 @@ services:
       BROWSER_ALLOWED_DOMAINS: ${BROWSER_ALLOWED_DOMAINS:-example.com}
       ARTIFACT_ROOT: /app/.data/artifacts
       CHROMIUM_SANDBOX: 'true'
+      BROWSER_HEADLESS: ${BROWSER_HEADLESS:-true}
+      STAGEHAND_ENABLED: ${STAGEHAND_ENABLED:-false}
+      STAGEHAND_MODEL_PROVIDER: ${STAGEHAND_MODEL_PROVIDER:-none}
+      STAGEHAND_MODEL: ${STAGEHAND_MODEL:-claude-opus-5-5}
+      STAGEHAND_MODEL_EFFORT: ${STAGEHAND_MODEL_EFFORT:-medium}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      APPROVAL_TTL_MS: ${APPROVAL_TTL_MS:-600000}
     volumes:
       - artifacts_data:/app/.data/artifacts
     depends_on:

@@ -1,0 +1,73 @@
+# Verification-only overlay for the Compose acceptance suite (test/compose/verify.mjs).
+# Production services, images and policies are unchanged; this adds a local HTTPS fixture,
+# a mock Messages API and the browser trust needed to reach the fixture over TLS.
+#
+# The fixture sits on an isolated (internal) network whose subnet is an ordinary public
+# unicast range, so the unchanged egress policy - which admits public addresses only -
+# reaches it. Its second alias, private.fixture.test, resolves to the private Compose
+# network and must stay unreachable.
+services:
+  fixture-pki:
+    profiles: [engine]
+    image: alpine:3.20
+    command: [sh, /verify/make-pki.sh]
+    volumes:
+      - ./test/compose:/verify:ro
+      - fixture_pki:/pki
+      - browser_nssdb:/nssdb
+
+  fixture:
+    profiles: [engine]
+    image: node:24-bookworm-slim
+    command: [node, /verify/fixture-server.mjs]
+    init: true
+    volumes:
+      - ./test/compose:/verify:ro
+      - fixture_pki:/pki:ro
+    depends_on:
+      fixture-pki:
+        condition: service_completed_successfully
+    ports:
+      - '127.0.0.1:${FIXTURE_CONTROL_PORT:-58090}:8080'
+    networks:
+      fixturenet:
+        ipv4_address: 11.66.0.10
+        aliases: [forms.fixture.test]
+      default:
+        aliases: [private.fixture.test]
+
+  mock-anthropic:
+    profiles: [engine]
+    image: node:24-bookworm-slim
+    command: [node, /verify/mock-anthropic.cjs]
+    volumes:
+      - ./test/compose:/verify:ro
+
+  browser-worker:
+    environment:
+      STAGEHAND_MODEL_PROVIDER: anthropic
+      ANTHROPIC_BASE_URL: http://mock-anthropic:8080
+      ANTHROPIC_API_KEY: ${VERIFY_ANTHROPIC_API_KEY:?}
+      # Approved writes are sent by the worker process itself (one attempt, no browser
+      # resend), so Node must trust the fixture CA as Chromium does through NSS.
+      NODE_EXTRA_CA_CERTS: /pki/ca.crt
+    volumes:
+      - browser_nssdb:/home/node/.pki/nssdb
+      - fixture_pki:/pki:ro
+    depends_on:
+      fixture-pki:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - fixturenet
+
+networks:
+  fixturenet:
+    internal: true
+    ipam:
+      config:
+        - subnet: 11.66.0.0/24
+
+volumes:
+  fixture_pki:
+  browser_nssdb:
