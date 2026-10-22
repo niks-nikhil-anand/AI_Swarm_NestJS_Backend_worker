@@ -32,6 +32,16 @@ export class BrowserController {
     const run = await this.runs.get(req.execution, id);
     return { runId: run.id, status: run.status, output: run.output };
   }
+  // Structured results with their source evidence, in step order.
+  @Get(':runId/extractions') async extractions(
+    @Req() req: AuthorizedRequest,
+    @Param('runId') id: string,
+  ) {
+    return {
+      runId: id,
+      extractions: await this.runs.extractions(req.execution, id),
+    };
+  }
   @Post(':runId/cancel') cancel(
     @Req() req: AuthorizedRequest,
     @Param('runId') id: string,
