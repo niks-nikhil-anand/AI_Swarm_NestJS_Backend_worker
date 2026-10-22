@@ -2,6 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 import { DatabaseService } from '../../src/persistence/database.service';
 import { RunRepository } from '../../src/persistence/run.repository';
+import { MIGRATIONS } from '../../src/persistence/migrate';
 import { SearchExecutionService } from '../../src/search/search-execution.service';
 import { SearxngClient } from '../../src/search/clients/searxng.client';
 import type { ExecutionContext } from '../../src/common/types/execution-context';
@@ -19,9 +20,9 @@ describe('PostgreSQL search persistence', () => {
   };
   beforeAll(async () => {
     pg = new PGlite();
-    await pg.exec(
-      readFileSync('src/persistence/migrations/001_initial.sql', 'utf8'),
-    );
+    // The full migration sequence, as every deployment applies it.
+    for (const file of MIGRATIONS)
+      await pg.exec(readFileSync('src/persistence/migrations/' + file, 'utf8'));
     db = {
       query: async (text: string, values: unknown[] = []) =>
         (await pg.query(text, values)).rows,

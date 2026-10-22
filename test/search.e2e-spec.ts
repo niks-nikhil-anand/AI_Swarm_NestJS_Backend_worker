@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
+import { MIGRATIONS } from '../src/persistence/migrate';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import {
@@ -20,9 +21,9 @@ describe('Authorized asynchronous search API', () => {
   const enqueue = jest.fn(async () => undefined);
   beforeAll(async () => {
     pg = new PGlite();
-    await pg.exec(
-      readFileSync('src/persistence/migrations/001_initial.sql', 'utf8'),
-    );
+    // The full migration sequence, as every deployment applies it.
+    for (const file of MIGRATIONS)
+      await pg.exec(readFileSync('src/persistence/migrations/' + file, 'utf8'));
     const db = {
       query: async (text: string, values: unknown[] = []) =>
         (await pg.query(text, values)).rows,
