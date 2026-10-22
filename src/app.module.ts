@@ -1,3 +1,4 @@
+import { AuthModule } from './auth/auth.module';
 import { ResearchModule } from './research/research.module';
 import { BrowserApiModule } from './browser/browser-api.module';
 import { ArtifactApiModule } from './artifacts/artifact-api.module';
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
     ArtifactApiModule,
     ResearchModule,
     UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,3 +1,4 @@
+import { authConfiguration } from './auth.config';
 import { Injectable, DynamicModule, Global, Module } from '@nestjs/common';
 import { config as loadEnv } from 'dotenv';
 import { z } from 'zod';
@@ -30,6 +31,7 @@ export function loadConfiguration(
       throw new Error();
     return {
       role,
+      auth: authConfiguration(env),
       databaseUrl,
       port: integer(env.PORT, 3000, 65535),
       search: searxngConfiguration(env),

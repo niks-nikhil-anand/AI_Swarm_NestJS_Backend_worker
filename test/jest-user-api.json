@@ -1,0 +1,34 @@
+{
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "testMatch": [
+    "<rootDir>/tests/auth/**/*.spec.ts",
+    "<rootDir>/test/auth*.e2e-spec.ts",
+    "<rootDir>/test/users.e2e-spec.ts"
+  ],
+  "collectCoverageFrom": [
+    "src/auth/**/*.ts",
+    "src/users/**/*.ts",
+    "src/config/auth.config.ts",
+    "!src/**/contracts/**",
+    "!src/**/*.module.ts"
+  ],
+  "coverageDirectory": "<rootDir>/coverage/user-api",
+  "coverageReporters": ["text", "json-summary", "lcov"],
+  "testTimeout": 20000,
+  "coverageThreshold": {
+    "global": {
+      "statements": 95,
+      "branches": 85,
+      "functions": 95,
+      "lines": 95
+    }
+  }
+}

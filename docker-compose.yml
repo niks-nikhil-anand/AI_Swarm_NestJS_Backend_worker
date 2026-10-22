@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    stop_grace_period: 30s
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-swarm_backend}
       POSTGRES_USER: ${POSTGRES_USER:-swarm}
@@ -18,206 +19,201 @@ services:
       start_period: 10s
     shm_size: 128mb
 
-  searxng:
-    image: ${SEARXNG_IMAGE:-docker.io/searxng/searxng:latest}
-    restart: unless-stopped
-    environment:
-      SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET in .env}
-      SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8080}/
-      SEARXNG_BIND_ADDRESS: 0.0.0.0
-      SEARXNG_PORT: '8080'
-      FORCE_OWNERSHIP: 'false'
-    ports:
-      - '127.0.0.1:${SEARXNG_PORT:-8080}:8080'
-    volumes:
-      - ./docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - searxng_cache:/var/cache/searxng
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'wget',
-          '-q',
-          '-O',
-          '/dev/null',
-          'http://127.0.0.1:8080/healthz',
-        ]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+#   searxng:
+#     image: ${SEARXNG_IMAGE:-docker.io/searxng/searxng:latest}
+#     restart: unless-stopped
+#     environment:
+#       SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET in .env}
+#       SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8080}/
+#       SEARXNG_BIND_ADDRESS: 0.0.0.0
+#       SEARXNG_PORT: '8080'
+#       FORCE_OWNERSHIP: 'false'
+#     ports:
+#       - '127.0.0.1:${SEARXNG_PORT:-8080}:8080'
+#     volumes:
+#       - ./docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
+#       - searxng_cache:/var/cache/searxng
+#     healthcheck:
+#       test:
+#         [
+#           'CMD',
+#           'wget',
+#           '-q',
+#           '-O',
+#           '/dev/null',
+#           'http://127.0.0.1:8080/healthz',
+#         ]
+#       interval: 15s
+#       timeout: 5s
+#       retries: 5
+#       start_period: 30s
 
-  browser-runtime:
-    profiles: [browser-smoke]
-    build:
-      context: ./docker/browser
-    restart: unless-stopped
-    init: true
-    shm_size: 1gb
-    security_opt:
-      - seccomp=./docker/browser/seccomp_profile.json
-    environment:
-      PORT: '3001'
-      SEARXNG_URL: http://searxng:8080
-    ports:
-      - '127.0.0.1:${BROWSER_RUNTIME_PORT:-3001}:3001'
-    depends_on:
-      searxng:
-        condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'node', 'healthcheck.mjs']
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    stop_grace_period: 20s
+#   browser-runtime:
+#     profiles: [browser-smoke]
+#     build:
+#       context: ./docker/browser
+#     restart: unless-stopped
+#     init: true
+#     shm_size: 1gb
+#     security_opt:
+#       - seccomp=./docker/browser/seccomp_profile.json
+#     environment:
+#       PORT: '3001'
+#       SEARXNG_URL: http://searxng:8080
+#     ports:
+#       - '127.0.0.1:${BROWSER_RUNTIME_PORT:-3001}:3001'
+#     depends_on:
+#       searxng:
+#         condition: service_healthy
+#     healthcheck:
+#       test: ['CMD', 'node', 'healthcheck.mjs']
+#       interval: 15s
+#       timeout: 5s
+#       retries: 5
+#       start_period: 30s
+#     stop_grace_period: 20s
 
-  temporal:
-    profiles: [engine]
-    image: ${TEMPORAL_IMAGE:-temporalio/temporal:latest}
-    command:
-      [
-        server,
-        start-dev,
-        --ip,
-        0.0.0.0,
-        --db-filename,
-        /home/temporal/development.db,
-      ]
-    restart: unless-stopped
-    ports:
-      - '127.0.0.1:7233:7233'
-      - '127.0.0.1:8233:8233'
-    volumes:
-      - temporal_data:/home/temporal
-    healthcheck:
-      test:
-        [CMD, temporal, operator, cluster, health, --address, 127.0.0.1:7233]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+#   temporal:
+#     profiles: [engine]
+#     image: ${TEMPORAL_IMAGE:-temporalio/temporal:latest}
+#     command:
+#       [
+#         server,
+#         start-dev,
+#         --ip,
+#         0.0.0.0,
+#         --db-filename,
+#         /home/temporal/development.db,
+#       ]
+#     restart: unless-stopped
+#     ports:
+#       - '127.0.0.1:7233:7233'
+#       - '127.0.0.1:8233:8233'
+#     volumes:
+#       - temporal_data:/home/temporal
+#     healthcheck:
+#       test:
+#         [CMD, temporal, operator, cluster, health, --address, 127.0.0.1:7233]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 10
+#       start_period: 20s
 
-  migrate:
-    profiles: [engine]
-    build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile
-    command: [node, dist/persistence/migrate.js]
-    environment:
-      DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
-    depends_on:
-      postgres:
-        condition: service_healthy
+#   migrate:
+#     profiles: [engine]
+#     build:
+#       context: .
+#       dockerfile: infrastructure/docker/Dockerfile
+#       target: migration
+#     command: [npm, run, 'db:migrate:prisma']
+#     environment:
+#       DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
 
-  api:
-    profiles: [engine]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    init: true
-    ports:
-      - '127.0.0.1:${PORT:-3000}:3000'
-    environment:
-      PORT: '3000'
-      DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
-      AUTH_CREDENTIALS: ${AUTH_CREDENTIALS:?Set AUTH_CREDENTIALS in .env}
-      APPROVAL_REQUIRE_DISTINCT_APPROVER: ${APPROVAL_REQUIRE_DISTINCT_APPROVER:-true}
-      SEARXNG_URL: http://searxng:8080
-      TEMPORAL_ADDRESS: temporal:7233
-      ARTIFACT_ROOT: /app/.data/artifacts
-    volumes:
-      - artifacts_data:/app/.data/artifacts
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      temporal:
-        condition: service_healthy
-      searxng:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          CMD,
-          node,
-          -e,
-          "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
-      interval: 15s
-      timeout: 10s
-      retries: 5
+#   api:
+#     profiles: [engine]
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     restart: unless-stopped
+#     init: true
+#     ports:
+#       - '127.0.0.1:${PORT:-3000}:3000'
+#     environment:
+#       PORT: '3000'
+#       DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
+#       AUTH_CREDENTIALS: ${AUTH_CREDENTIALS:?Set AUTH_CREDENTIALS in .env}
+#       SEARXNG_URL: http://searxng:8080
+#       TEMPORAL_ADDRESS: temporal:7233
+#       ARTIFACT_ROOT: /app/.data/artifacts
+#     volumes:
+#       - artifacts_data:/app/.data/artifacts
+#     depends_on:
+#       migrate:
+#         condition: service_completed_successfully
+#       temporal:
+#         condition: service_healthy
+#       searxng:
+#         condition: service_healthy
+#     healthcheck:
+#       test:
+#         [
+#           CMD,
+#           node,
+#           -e,
+#           "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+#         ]
+#       interval: 15s
+#       timeout: 10s
+#       retries: 5
 
-  searxng-worker:
-    profiles: [engine]
-    build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile
-    restart: unless-stopped
-    init: true
-    environment:
-      DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
-      SEARXNG_URL: http://searxng:8080
-      TEMPORAL_ADDRESS: temporal:7233
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      temporal:
-        condition: service_healthy
-      searxng:
-        condition: service_healthy
-    stop_grace_period: 30s
+#   searxng-worker:
+#     profiles: [engine]
+#     build:
+#       context: .
+#       dockerfile: infrastructure/docker/Dockerfile
+#     restart: unless-stopped
+#     init: true
+#     environment:
+#       DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
+#       SEARXNG_URL: http://searxng:8080
+#       TEMPORAL_ADDRESS: temporal:7233
+#     depends_on:
+#       migrate:
+#         condition: service_completed_successfully
+#       temporal:
+#         condition: service_healthy
+#       searxng:
+#         condition: service_healthy
+#     stop_grace_period: 30s
 
-  orchestration-worker:
-    profiles: [engine]
-    build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile
-    command: [node, dist/workers/orchestration/main.js]
-    restart: unless-stopped
-    init: true
-    environment:
-      DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
-      TEMPORAL_ADDRESS: temporal:7233
-    depends_on:
-      temporal:
-        condition: service_healthy
-    stop_grace_period: 30s
+#   orchestration-worker:
+#     profiles: [engine]
+#     build:
+#       context: .
+#       dockerfile: infrastructure/docker/Dockerfile
+#     command: [node, dist/workers/orchestration/main.js]
+#     restart: unless-stopped
+#     init: true
+#     environment:
+#       DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
+#       TEMPORAL_ADDRESS: temporal:7233
+#     depends_on:
+#       migrate:
+#         condition: service_completed_successfully
+#       temporal:
+#         condition: service_healthy
+#     stop_grace_period: 30s
 
-  browser-worker:
-    profiles: [engine]
-    build:
-      context: .
-      dockerfile: infrastructure/chromium/Dockerfile
-    restart: unless-stopped
-    init: true
-    shm_size: 1gb
-    security_opt:
-      - seccomp=./docker/browser/seccomp_profile.json
-    environment:
-      DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
-      TEMPORAL_ADDRESS: temporal:7233
-      BROWSER_ALLOWED_DOMAINS: ${BROWSER_ALLOWED_DOMAINS:-example.com}
-      ARTIFACT_ROOT: /app/.data/artifacts
-      CHROMIUM_SANDBOX: 'true'
-      BROWSER_HEADLESS: ${BROWSER_HEADLESS:-true}
-      STAGEHAND_ENABLED: ${STAGEHAND_ENABLED:-false}
-      STAGEHAND_MODEL_PROVIDER: ${STAGEHAND_MODEL_PROVIDER:-none}
-      STAGEHAND_MODEL: ${STAGEHAND_MODEL:-claude-opus-5-5}
-      STAGEHAND_MODEL_EFFORT: ${STAGEHAND_MODEL_EFFORT:-medium}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      APPROVAL_TTL_MS: ${APPROVAL_TTL_MS:-600000}
-    volumes:
-      - artifacts_data:/app/.data/artifacts
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      temporal:
-        condition: service_healthy
-    stop_grace_period: 30s
+#   browser-worker:
+#     profiles: [engine]
+#     build:
+#       context: .
+#       dockerfile: infrastructure/chromium/Dockerfile
+#     restart: unless-stopped
+#     init: true
+#     shm_size: 1gb
+#     security_opt:
+#       - seccomp=./docker/browser/seccomp_profile.json
+#     environment:
+#       DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in .env}
+#       TEMPORAL_ADDRESS: temporal:7233
+#       BROWSER_ALLOWED_DOMAINS: ${BROWSER_ALLOWED_DOMAINS:-example.com}
+#       ARTIFACT_ROOT: /app/.data/artifacts
+#       CHROMIUM_SANDBOX: 'true'
+#     volumes:
+#       - artifacts_data:/app/.data/artifacts
+#     depends_on:
+#       migrate:
+#         condition: service_completed_successfully
+#       temporal:
+#         condition: service_healthy
+#     stop_grace_period: 30s
 
 volumes:
   postgres_data:
-  searxng_cache:
-  temporal_data:
-  artifacts_data:
+#   searxng_cache:
+#   temporal_data:
+#   artifacts_data:

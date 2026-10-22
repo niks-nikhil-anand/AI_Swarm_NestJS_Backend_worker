@@ -1,17 +1,8 @@
-import { Test } from '@nestjs/testing';
+import { UserApiFixture } from './helpers/user-api-test-app';
 import type { INestApplication } from '@nestjs/common';
-import { Pool } from 'pg';
-import { readFileSync } from 'node:fs';
 import { randomUUID, scrypt } from 'node:crypto';
 import request from 'supertest';
-import { UsersModule } from '../src/users/users.module';
 import { PrismaService } from '../src/persistence/prisma.service';
-import {
-  ConfigurationModule,
-  ConfigurationService,
-  loadConfiguration,
-} from '../src/config/configuration';
-import { ApiExceptionFilter } from '../src/common/errors/api-exception.filter';
 
 // Uses a newly created schema, never the application's users/accounts tables.
 const databaseUrl = process.env.USER_API_TEST_DATABASE_URL;
@@ -19,81 +10,24 @@ const live = databaseUrl ? describe : describe.skip;
 
 live('User CRUD API with real Prisma/PostgreSQL', () => {
   let app: INestApplication;
-  let pool: Pool;
   let db: PrismaService;
-  let schemaCreated = false;
-  const schema = `user_api_test_${randomUUID().replaceAll('-', '_')}`;
-  const adminToken = 'users-admin-test-token-'.repeat(3);
-  const searchToken = 'search-only-test-token-'.repeat(3);
+  const adminToken = 'user-api-admin-test-token-'.repeat(3);
+  const searchToken = 'user-api-search-test-token-'.repeat(3);
   const headers = { Authorization: `Bearer ${adminToken}` };
   const password = 'A secure test password';
   const freshEmail = () => `${randomUUID()}@example.test`;
 
+  const fixture = new UserApiFixture();
   beforeAll(async () => {
-    pool = new Pool({
-      connectionString: databaseUrl,
-      max: 1,
-      connectionTimeoutMillis: 5000,
-    });
-    await pool.query(`CREATE SCHEMA "${schema}"`);
-    schemaCreated = true;
-    await pool.query(`SET search_path TO "${schema}"`);
-    for (const migration of [
-      '20261001000000_add_users',
-      '20261001000100_add_accounts_remove_user_tenant',
-    ]) {
-      await pool.query(
-        readFileSync(`prisma/migrations/${migration}/migration.sql`, 'utf8'),
-      );
-    }
-    const url = new URL(databaseUrl!);
-    url.searchParams.set('schema', schema);
-    const config = new ConfigurationService(
-      loadConfiguration('api', {
-        DATABASE_URL: url.toString(),
-        AUTH_CREDENTIALS: JSON.stringify([
-          {
-            token: adminToken,
-            tenantId: 'test',
-            userId: 'admin',
-            projectIds: ['test'],
-            capabilities: ['users'],
-          },
-          {
-            token: searchToken,
-            tenantId: 'test',
-            userId: 'reader',
-            projectIds: ['test'],
-            capabilities: ['search'],
-          },
-        ]),
-      }),
-    );
-    const module = await Test.createTestingModule({
-      imports: [ConfigurationModule.forRole('api'), UsersModule],
-    })
-      .overrideProvider(ConfigurationService)
-      .useValue(config)
-      .compile();
-    app = module.createNestApplication();
-    app.useGlobalFilters(new ApiExceptionFilter());
-    await app.init();
-    db = app.get(PrismaService);
-  }, 30000);
-
+    await fixture.start(databaseUrl);
+    app = fixture.app;
+    db = fixture.db;
+  }, 60000);
+  beforeEach(async () => {
+    await fixture.reset();
+  });
   afterAll(async () => {
-    try {
-      if (app) await app.close();
-    } finally {
-      if (pool) {
-        try {
-          if (schemaCreated)
-            await pool.query(`DROP SCHEMA "${schema}" CASCADE`);
-        } finally {
-          await pool.end();
-        }
-      }
-    }
+    await fixture.close();
   });
 
   test('requires a valid bearer token with the users capability', async () => {
@@ -271,6 +205,12 @@ live('User CRUD API with real Prisma/PostgreSQL', () => {
   });
 
   test('lists users with bounded pagination and no passwords or accounts', async () => {
+    for (let i = 0; i < 2; i++)
+      await request(app.getHttpServer())
+        .post('/users')
+        .set(headers)
+        .send({ email: freshEmail(), password })
+        .expect(201);
     const result = await request(app.getHttpServer())
       .get('/users?skip=0&take=1')
       .set(headers)

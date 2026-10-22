@@ -14,7 +14,7 @@ npm run start:prod
 
 Every user endpoint requires `Authorization: Bearer <token>`. Add `users` to the capabilities of the designated user administrator in the existing AUTH_CREDENTIALS configuration. Preserve the other principal fields and permissions. This grants management of all users globally; it is separate from project access. Existing search/browser/research tokens without this capability receive 403. These are administrative CRUD endpoints, not public signup or user login endpoints.
 
-The current Compose migration job runs the legacy research SQL migrations only. Run the Prisma migration command with a connection to the same PostgreSQL database before using user routes in that deployment. Existing populated databases without Prisma migration history need reviewed onboarding before `migrate deploy`; do not reset them. Image builds generate the client automatically.
+The Compose migration job now applies Prisma migrations for both identity and run-domain tables. Follow [database setup](DATABASE_SETUP.md) when onboarding an existing database. Existing populated databases without Prisma migration history need reviewed onboarding before `migrate deploy`; do not reset them. Image builds generate the client automatically.
 
 ## Endpoints
 

@@ -8,6 +8,12 @@ COPY prisma ./prisma
 COPY prisma7.config.ts ./
 RUN npm run build
 
+# Dedicated one-shot migration image: retain the pinned Prisma CLI and schema.
+FROM build AS migration
+ENV NODE_ENV=production
+USER node
+CMD ["npm", "run", "db:migrate:prisma"]
+
 FROM node:24-bookworm-slim AS worker
 ENV NODE_ENV=production
 WORKDIR /app

@@ -1,3 +1,5 @@
+import { setupUserSwagger } from './openapi/swagger';
+import { configureAuthCors } from './auth/auth-http';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigurationService } from './config/configuration';
@@ -8,6 +10,11 @@ async function bootstrap() {
   app.use(express.json({ limit: '64kb' }));
   app.useGlobalFilters(new ApiExceptionFilter());
   app.enableShutdownHooks();
+  configureAuthCors(
+    app,
+    app.get(ConfigurationService).value.auth.allowedOrigins,
+  );
+  setupUserSwagger(app);
   await app.listen(app.get(ConfigurationService).value.port, '0.0.0.0');
 }
 void bootstrap().catch(() => {
