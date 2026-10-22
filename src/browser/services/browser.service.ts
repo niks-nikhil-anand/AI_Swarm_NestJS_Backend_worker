@@ -24,6 +24,17 @@ import { screenshotTool } from '../tools/browser-screenshot.tool';
 import { listTabsTool } from '../tools/browser-tabs.tool';
 import { waitTool } from '../tools/browser-wait.tool';
 import { BrowserError } from '../../common/errors/browser.errors';
+import {
+  semanticActTool,
+  semanticExtractTool,
+  semanticObserveTool,
+} from '../tools/browser-semantic.tool';
+import { StagehandConnector } from '../adapters/stagehand/stagehand.connector';
+import {
+  activateApprovedTool,
+  fingerprintTool,
+} from '../tools/browser-consequential.tool';
+import { PolicyError } from '../../common/errors/policy.errors';
 
 @Injectable()
 export class BrowserService {
@@ -36,7 +47,23 @@ export class BrowserService {
     private readonly registry: TargetRegistryService,
     private readonly adapter: PlaywrightAdapter,
     private readonly config: ConfigurationService,
+    private readonly stagehand: StagehandConnector,
   ) {}
+  // Semantic actions need Stagehand on the session and a configured model provider.
+  private semantic(session: BrowserSession) {
+    if (!session.stagehand || !this.stagehand.semantic)
+      throw new BrowserError(
+        'MODEL_NOT_CONFIGURED',
+        'Semantic actions need STAGEHAND_ENABLED=true and STAGEHAND_MODEL_PROVIDER on the browser worker',
+        409,
+      );
+    // Each semantic action is one step for the model-usage budget.
+    session.stagehand.beginStep();
+    return {
+      adapter: session.stagehand,
+      timeoutMs: this.config.value.browser?.stagehand.actionTimeoutMs || 120000,
+    };
+  }
   async execute(
     sessionId: string,
     ctx: ExecutionContext,
@@ -61,6 +88,9 @@ export class BrowserService {
     session: BrowserSession,
     tabId: string,
     target: BrowserTarget,
+    // Waits may target elements that do not exist yet; Playwright's strict locators still
+    // reject a target that matches more than one element once it appears.
+    requirePresent = true,
   ) {
     const page = this.tabs.get(session, tabId);
     if (target.kind === 'reference')
@@ -74,7 +104,8 @@ export class BrowserService {
       target.kind === 'css'
         ? page.locator(target.selector)
         : page.getByRole(target.role, { name: target.name, exact: true });
-    if ((await locator.count()) !== 1)
+    const count = await locator.count();
+    if (count > 1 || (requirePresent && count !== 1))
       throw new BrowserError(
         'AMBIGUOUS_TARGET',
         'Expected exactly one target',
@@ -143,9 +174,72 @@ export class BrowserService {
           await page!.goBack({ waitUntil: 'domcontentloaded', timeout: 15000 });
           data = { url: page!.url() };
           break;
+        case 'semantic_observe': {
+          const { adapter, timeoutMs } = this.semantic(session);
+          data = await semanticObserveTool(
+            adapter,
+            page!,
+            action.instruction,
+            timeoutMs,
+          );
+          break;
+        }
+        case 'semantic_act': {
+          const { adapter, timeoutMs } = this.semantic(session);
+          data = await semanticActTool(
+            adapter,
+            page!,
+            action.instruction,
+            timeoutMs,
+          );
+          break;
+        }
+        case 'fingerprint': {
+          const fingerprint = await fingerprintTool(
+            page!,
+            await this.target(session, action.tabId, action.target),
+          );
+          // The approved effect must stay inside the allowlist like any navigation.
+          this.domain.assert(
+            fingerprint.summary.form?.action ?? fingerprint.summary.href!,
+          );
+          data = fingerprint;
+          break;
+        }
+        case 'approved_activate': {
+          const approved = session.approvedAction;
+          // Single use, bound to the step and page state of the consumed approval.
+          session.approvedAction = undefined;
+          if (
+            !approved ||
+            approved.step !== action.step ||
+            approved.pageHash !== action.pageHash
+          )
+            throw new PolicyError(
+              'APPROVAL_REQUIRED',
+              'No consumed approval authorizes this action',
+            );
+          data = await activateApprovedTool(
+            session,
+            page!,
+            await this.target(session, action.tabId, action.target),
+            action.pageHash,
+          );
+          break;
+        }
+        case 'semantic_extract': {
+          const { adapter, timeoutMs } = this.semantic(session);
+          data = await semanticExtractTool(adapter, page!, action, {
+            timeoutMs,
+            maxResultBytes:
+              this.config.value.browser?.stagehand.extractMaxResultBytes ||
+              65536,
+          });
+          break;
+        }
         case 'wait_for':
           data = await waitTool(
-            await this.target(session, action.tabId, action.target),
+            await this.target(session, action.tabId, action.target, false),
             action.state,
             action.timeoutMs,
           );
@@ -160,6 +254,11 @@ export class BrowserService {
         durationMs: Date.now() - started,
       };
     } catch (error) {
+      // Playwright timeouts (navigation, waits) are transient; other failures are not.
+      const timeout =
+        !(error instanceof ServiceError) &&
+        error instanceof Error &&
+        error.name === 'TimeoutError';
       return {
         actionId,
         status: 'failed',
@@ -167,12 +266,17 @@ export class BrowserService {
           code:
             error instanceof ServiceError
               ? error.code
-              : 'BROWSER_ACTION_FAILED',
+              : timeout
+                ? 'BROWSER_TIMEOUT'
+                : 'BROWSER_ACTION_FAILED',
           message:
             error instanceof ServiceError
               ? error.message
-              : 'Browser action failed',
-          retryable: error instanceof ServiceError && error.retryable,
+              : timeout
+                ? 'Browser action timed out'
+                : 'Browser action failed',
+          retryable:
+            timeout || (error instanceof ServiceError && error.retryable),
         },
         durationMs: Date.now() - started,
       };
