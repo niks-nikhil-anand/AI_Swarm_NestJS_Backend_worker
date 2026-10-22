@@ -55,6 +55,10 @@ export class TemporalService implements OnModuleDestroy {
   async cancel(run: Run) {
     await (await this.client()).workflow.getHandle('swarm-' + run.id).cancel();
   }
+  // Wakes a workflow waiting on an approval decision; harmless if it is not waiting.
+  async signal(run: Run, name: 'approvalDecided') {
+    await (await this.client()).workflow.getHandle('swarm-' + run.id).signal(name);
+  }
   async status(run: Run) { return (await (await this.client()).workflow.getHandle('swarm-' + run.id).describe()).status.name; }
   async healthy() {
     try {
